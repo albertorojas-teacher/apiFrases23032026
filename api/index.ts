@@ -1,6 +1,7 @@
 import express , {Request, Response} from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv"
+import { error } from "node:console";
 
 // 1.- Activamos las variables de entorno de nuestro archivo secreto
 dotenv.config();
@@ -38,7 +39,7 @@ async function connectToMongo() {
 const FraseSchema = new mongoose.Schema(
     {
         text: String,
-        autor: String,
+        author: String,
     },
     {
         collection: "Frasesclase"
@@ -54,5 +55,56 @@ function getMongoDebugInfo(){
         readyState: mongoose.connection.readyState,
     }
 }
-
 // 5.- Crearemos todas las rutas, get, post, todo esto vamos a configurarlo en vercel.
+
+// Para debug
+app.get("/api/debug-db", async(req: Request, res: Response) => {
+    try {
+        await connectToMongo();
+        res.json(getMongoDebugInfo());
+    } catch (error) {
+        console.error("Error al inspeccionar MongoDB:", error)
+        res.status(500).json({
+            error: "No se pudo inspeccionar la conexion",
+            detail: error instanceof Error ? error.message: "Error Desconocido"
+        })
+    }
+});
+
+// GET DE LAS FRASES
+app.get("/api/frases", async(req: Request, res: Response)=>{
+    try {
+        await connectToMongo();
+        const frases = await Frase.find();
+        res.json(frases)
+    } catch (error) {
+        console.error("Error al leer frases", error)
+        res.status(500).json({
+            error: "No se pudieron obtener las frases",
+            detail: error instanceof Error ? error.message: "Error Desconocido"
+        })
+    }
+});
+
+// POST DE LAS FRASES
+app.post("/api/frases",async(req: Request, res: Response)=>{
+    try {
+        const { text, author } = req.body
+        if(!text || !author){
+            res.status(400).json({error: "Debes enviar texto y autor, espabila!!"})
+        }
+
+        await connectToMongo();
+        const nuevaFrase = new Frase({text, author}) //Toma los datos que envia el usuario
+        await nuevaFrase.save() // Lo guarda en la base de datos
+        res.status(201).json(nuevaFrase) //Responder la frase recien creada
+    } catch (error) {
+        console.error("Error al crear la frase:", error)
+        res.status(500).json({
+            error: "No se pudieron obtener las frases",
+            detail: error instanceof Error ? error.message: "Error Desconocido"
+        })
+    }
+})
+
+
