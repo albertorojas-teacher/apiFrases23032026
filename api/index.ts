@@ -107,3 +107,4 @@ app.post("/api/frases",async(req: Request, res: Response)=>{
 })
 
 
+export default app;
